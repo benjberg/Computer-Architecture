@@ -19,26 +19,44 @@ class CPU:
     def ram_write(self, address, value):
         self.ram[address] = value
 
-    def load(self):
+    def load(self,filename):
         """Load a program into memory."""
 
-        address = 0
+        # address = 0
 
         # For now, we've just hardcoded a program:
+        try:
+            address = 0
+            with open(filename) as f:
+                for line in f:
+                    comment_split = line.split("#")
+                    n = comment_split[0].strip()
 
-        program = [
-            # From print8.ls8
-            0b10000010, # LDI R0,8
-            0b00000000,
-            0b00001000,
-            0b01000111, # PRN R0
-            0b00000000,
-            0b00000001, # HLT
-        ]
+                    if n == '':
+                        continue
 
-        for instruction in program:
-            self.ram[address] = instruction
-            address += 1
+                    val = int(n, 2)
+                    # store val in memory
+                    self.ram[address] = val
+
+                    address += 1
+        except FileNotFoundError:
+            print(f"{sys.argv[0]}: {filename} not found")
+            sys.exit(2)
+
+        # program = [
+        #     # From print8.ls8
+        #     0b10000010, # LDI R0,8
+        #     0b00000000,
+        #     0b00001000,
+        #     0b01000111, # PRN R0
+        #     0b00000000,
+        #     0b00000001, # HLT
+        # ]
+
+        # for instruction in program:
+        #     self.ram[address] = instruction
+        #     address += 1
     
 
 
@@ -49,6 +67,12 @@ class CPU:
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
         #elif op == "SUB": etc
+        elif op == "SUB":
+            self.reg[reg_a] -= self.reg[reg_b] 
+        elif op == "MUL":
+            val = self.reg[reg_a] * self.reg[reg_b]
+            self.reg[reg_a] = val
+            self.pc += 3             
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -72,30 +96,67 @@ class CPU:
 
         print()
 
+    def LDI(self, regval, value):
+        self.reg[regval] = value
+
+    def PRN(self, regval):
+        print(self.reg[regval])
+
+    def HLT(self):
+        self.running = False
+
+    def MUL(self,reg_a,reg_b):
+        self.alu("MUL",reg_a,reg_b)
+
     def run(self):
         """Run the CPU."""
-        # set variables
-        LDI = 0b10000010
+
+        HLT = 1
+        LDI = 0b10000010 
         PRN = 0b01000111
-        HLT = 0b00000001
-        
+        MUL = 0b10100010
+
 
         while self.running:
-            ir = self.ram[self.pc]
-            operand_a = self.ram_read(self.pc + 1)
-            operand_b = self.ram_read(self.pc + 2)
+            ir = self.ram_read(self.pc)
+            op_a, op_b = self.ram[self.pc + 1] , self.ram[self.pc + 2]
+            
 
             if ir == HLT:
-                # exit
-                self.running = False
+                self.HLT()
             elif ir == LDI:
-                # Set the value of a register to an integer.
-                self.reg[operand_a] = [operand_b]
+                self.LDI(op_a,op_b)
                 self.pc += 3
             elif ir == PRN:
-                # Print numeric value stored in the given register.
-                print(self.reg[operand_a])
+                self.PRN(op_a)
                 self.pc += 2
+            elif ir == MUL:
+                self.MUL(op_a,op_b)
             else:
-                print(f'unknown instruction {ir} at address {self.pc}')
-                self.running = False
+                print('instruction error')
+        
+        # # set variables
+        # LDI = 0b10000010
+        # PRN = 0b01000111
+        # HLT = 0b00000001
+        
+
+        # while self.running:
+        #     ir = self.ram[self.pc]
+        #     operand_a = self.ram_read(self.pc + 1)
+        #     operand_b = self.ram_read(self.pc + 2)
+
+        #     if ir == HLT:
+        #         # exit
+        #         self.running = False
+        #     elif ir == LDI:
+        #         # Set the value of a register to an integer.
+        #         self.reg[operand_a] = [operand_b]
+        #         self.pc += 3
+        #     elif ir == PRN:
+        #         # Print numeric value stored in the given register.
+        #         print(self.reg[operand_a])
+        #         self.pc += 2
+        #     else:
+        #         print(f'unknown instruction {ir} at address {self.pc}')
+        #         self.running = False
