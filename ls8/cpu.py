@@ -17,6 +17,8 @@ class CPU:
         #stack pointer
         self.sp = 256
         self.running = True
+        #sets flags
+        self.fl = [0] * 8 
         #initiates branchtable
         self.branchtable = {
             0b00000001: self.hlt,
@@ -24,7 +26,14 @@ class CPU:
             0b01000111: self.prn,
             0b10100010: self.mul,
             0b01000101: self.push,
-            0b01000110: self.pop
+            0b01000110: self.pop,
+            0b10100111: self.comp,
+            0b01010100: self.jmp,
+            0b01010101: self.jeq,
+            0b01010110: self.jne,
+            0b10101000: self.bit_and,
+            0b10101010: self.bit_or,
+            0b10101011: self.bit_xor
             }
         
 
@@ -86,6 +95,14 @@ class CPU:
             self.reg[reg_a] -= self.reg[reg_b] 
         elif op == "MUL":
             val = self.reg[reg_a] * self.reg[reg_b]
+        elif op == "AND":
+            val = self.reg[reg_a] & self.reg[reg_b]
+        elif op == "OR":
+            val = self.reg[reg_a] | self.reg[reg_b]
+        elif op == "XOR":
+            val = self.reg[reg_a] ^ self.reg[reg_b]
+        elif op == "NOT":
+            val = self.reg[reg_a] != self.reg[reg_b]                    
            
         else:
             raise Exception("Unsupported ALU operation")
@@ -136,12 +153,61 @@ class CPU:
         self.reg[reg_address] = pop_value
         self.sp += 1
         return (2, True)
+    
+    def comp(self, op_a, op_b):
+        self.fl[5] = 0
+        self.fl[6] = 0
+        self.fl[7] = 0
+        if self.reg[op_a] < self.reg[op_b]:
+            self.fl[5] = 1
+        elif self.reg[op_a] > self.reg[op_b]:
+            self.fl[6] = 1
+        elif self.reg[op_a] == self.reg[op_b]:
+            self.fl[7] = 1
+        return(3, True)
+    
+    def jmp(self, op_a, op_b):
+        #get the address to jump to, from the register
+        address = self.reg[op_a]
+        #then look at register, jump to that address
+        self.pc = address
+        return(0, True)
+    
+    def jeq(self, op_a, op_b):
+        if self.fl[7] == 1:
+            self.jmp(op_a, op_b)
+            return(0, True)
+        else:
+            return(2, True)
+
+    def jne(self, op_a,op_b):
+        if self.fl[7] == 0:
+            self.jmp(op_a, op_b)
+            return(0, True)
+        else:
+            return(2, True)
+    
+    def bit_and(self, op_a, op_b):
+        self.reg[op_a] = self.reg[op_a] & self.reg[op_b]
+        return(3, True)
+    
+    def bit_or(self, op_a, op_b):
+        self.reg[op_a] = self.reg[op_a] | self.reg[op_b]
+        return(3, True)
+
+    def bit_xor(self, op_a, op_b):
+        self.reg[op_a] = self.reg[op_a] ^ self.reg[op_b]
+        return(3, True)
+    
+    def bit_or(self, op_a, op_b):
+        self.reg[op_a] = self.reg[op_a] | self.reg[op_b]
+        return(3, True)
 
 
     def run(self):
         """Run the CPU."""
         while self.running:
-            ir = self.ram_read(self.pc)
+            ir = self.ram[self.pc]
             op_a = self.ram_read(self.pc + 1)
             op_b = self.ram_read(self.pc + 2)
             try:
